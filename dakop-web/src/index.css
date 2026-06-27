@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Leaflet needs its own CSS — imported here so it works globally */
+@import "leaflet/dist/leaflet.css";
+
+/* Reset Vite's default #root constraints so our layout can fill the screen */
+#root {
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
