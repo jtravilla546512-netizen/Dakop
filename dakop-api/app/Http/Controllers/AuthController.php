@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -12,9 +13,10 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name'                  => ['required', 'string', 'max:100'],
-            'email'                 => ['required', 'email', 'unique:users'],
-            'password'              => ['required', 'string', 'min:8', 'confirmed'],
+            'name'     => ['required', 'string', 'max:100'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users'],
+            // Must be 8+ chars and contain both letters and numbers
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
 
         $user  = User::create($data);

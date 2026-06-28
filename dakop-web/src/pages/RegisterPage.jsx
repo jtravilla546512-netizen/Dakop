@@ -49,9 +49,7 @@ export default function RegisterPage() {
 
           {/* Logo */}
           <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-              D
-            </div>
+            <img src="/dakop.png" alt="Dakop" className="h-12 w-auto" />
           </div>
 
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-1">Create account</h1>

@@ -16,9 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Allow the React frontend (on a different origin/port) to call our API
         $middleware->validateCsrfTokens(except: ['api/*']);
 
-        $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
-        ]);
+        $middleware->api(
+            prepend: [
+                \Illuminate\Http\Middleware\HandleCors::class,
+            ],
+            append: [
+                \App\Http\Middleware\SecurityHeaders::class,
+            ],
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

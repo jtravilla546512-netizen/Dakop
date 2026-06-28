@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens expire 7 days (10 080 minutes) after being issued. A leaked or
+    // forgotten token stops working automatically instead of living forever.
+    'expiration' => 60 * 24 * 7,
 
     /*
     |--------------------------------------------------------------------------

@@ -56,6 +56,23 @@ class ReportController extends Controller
             'landmark'    => ['nullable', 'string', 'max:255'],
         ]);
 
+        // Anti-spam / defensive guard: reject a near-duplicate of THIS user's own
+        // recent report (same type, within ~150m, last 10 minutes). Stops accidental
+        // double-taps and deliberate spam, without blocking genuinely new reports.
+        $delta = 0.0015; // ≈ 150 metres in degrees
+        $isDuplicate = Report::where('user_id', $request->user()->id)
+            ->where('type', $data['type'])
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->whereBetween('latitude',  [$data['latitude']  - $delta, $data['latitude']  + $delta])
+            ->whereBetween('longitude', [$data['longitude'] - $delta, $data['longitude'] + $delta])
+            ->exists();
+
+        if ($isDuplicate) {
+            return response()->json([
+                'message' => 'You already reported a similar checkpoint near here a few minutes ago.',
+            ], 422);
+        }
+
         $data['user_id']    = $request->user()->id;
         $data['expires_at'] = now()->addHours(2);
 
@@ -97,14 +114,26 @@ class ReportController extends Controller
             'vote'        => $request->vote,
         ]);
 
+        // How many "gone" votes (and a majority) are needed to remove a report early.
+        $removalThreshold = 3;
+
         if ($request->vote === 'still_here') {
-            // Extend expiry by 30 minutes, but never beyond 4 hours from creation
+            // Extend expiry by 30 minutes, but never beyond 4 hours from creation.
+            // NOTE: this does NOT reset to 2h — it just pushes the deadline a bit.
             $maxExpiry = $report->created_at->addHours(4);
             $newExpiry = now()->addMinutes(30);
             $report->expires_at        = $newExpiry->lessThan($maxExpiry) ? $newExpiry : $maxExpiry;
             $report->still_here_count += 1;
         } else {
             $report->no_longer_here_count += 1;
+
+            // Crowd consensus removal: enough people say it's gone AND they
+            // outnumber those who say it's still there → expire it now.
+            // One or two stray votes can't remove a report others are confirming.
+            if ($report->no_longer_here_count >= $removalThreshold
+                && $report->no_longer_here_count > $report->still_here_count) {
+                $report->expires_at = now();
+            }
         }
 
         $report->save();

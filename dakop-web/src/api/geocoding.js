@@ -42,8 +42,17 @@ export async function forwardGeocode(query) {
 export function extractBarangay(geocodeResult) {
   if (!geocodeResult?.address) return null
   const a = geocodeResult.address
-  // In Philippine context, barangay usually appears in suburb or quarter
-  return a.suburb ?? a.quarter ?? a.village ?? a.neighbourhood ?? null
+  // OpenStreetMap stores the barangay under different keys depending on the area.
+  // Davao barangays show up under any of these — check them all, most-specific first.
+  return a.suburb
+      ?? a.quarter
+      ?? a.neighbourhood
+      ?? a.village
+      ?? a.city_district
+      ?? a.hamlet
+      ?? a.residential
+      ?? a.locality
+      ?? null
 }
 
 /**

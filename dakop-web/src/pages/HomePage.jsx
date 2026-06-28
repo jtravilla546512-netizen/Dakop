@@ -24,8 +24,11 @@ export default function HomePage() {
   const [waitingForPin, setWaitingForPin] = useState(false)
   const [flyToPosition, setFlyToPosition] = useState(null)
   const [prefillData,   setPrefillData]   = useState(null)
-  const [sidebarOpen,   setSidebarOpen]   = useState(false)
+  // On mobile the sheet starts open so the reports list is the first thing seen.
+  // (Ignored on desktop, where the side panel is always visible.)
+  const [sidebarOpen,   setSidebarOpen]   = useState(true)
 
+  const [loadingReports, setLoadingReports] = useState(true)
   const intervalRef = useRef(null)
 
   // ── Fetch / poll reports ─────────────────────────────────────────────────
@@ -36,6 +39,7 @@ export default function HomePage() {
       const res = await api.get('/reports', { params })
       setReports(res.data.data)
     } catch { /* silent */ }
+    finally { setLoadingReports(false) }
   }, [filters])
 
   useEffect(() => {
@@ -61,7 +65,8 @@ export default function HomePage() {
 
     setPendingPin(latlng)
     setWaitingForPin(false)
-    if (!showForm) setShowForm(true)
+    setShowForm(true)
+    setSidebarOpen(true)  // bring the form into view on mobile (it lives in the bottom sheet)
   }
 
   // ── Landmark search result selected ──────────────────────────────────────
@@ -103,10 +108,13 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+    // Definite height (viewport minus the 3.5rem header) so flex children — and
+    // the Leaflet map inside them — get real pixel heights on mobile too.
+    // 100svh = "small viewport height": accounts for the mobile browser address bar.
+    <div className="flex flex-col lg:flex-row h-[calc(100svh-3.5rem)] overflow-hidden relative">
 
       {/* ── MAP ─────────────────────────────────────────────────────────── */}
-      <div className="flex-1 relative">
+      <div className="relative flex-1 min-h-0">
         <DakopMap
           reports={reports}
           pendingPin={pendingPin}
@@ -115,16 +123,11 @@ export default function HomePage() {
           onMapClick={handleMapClick}
         />
 
-        {/* Landmark / barangay search bar — floats over the map */}
-        <MapSearchBar onPlaceSelect={handlePlaceSelect} />
-
-        {/* Mobile: toggle sidebar */}
-        <button
-          onClick={() => setSidebarOpen(o => !o)}
-          className="absolute top-3 right-3 z-10 lg:hidden bg-white border border-gray-200 shadow rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700"
-        >
-          {sidebarOpen ? 'Show map' : `Feed (${reports.length})`}
-        </button>
+        {/* Landmark / barangay search bar — floats over the map.
+            Hidden on mobile while the report form is open so it doesn't overlap it. */}
+        <div className={showForm ? 'hidden lg:block' : 'block'}>
+          <MapSearchBar onPlaceSelect={handlePlaceSelect} />
+        </div>
       </div>
 
       {/* ── RIGHT SIDEBAR ─────────────────────────────────────────────────── */}
@@ -133,10 +136,20 @@ export default function HomePage() {
           ${sidebarOpen ? 'flex' : 'hidden'} lg:flex
           flex-col w-full lg:w-80 xl:w-96 bg-white
           border-t lg:border-t-0 lg:border-l border-gray-200
-          absolute bottom-0 left-0 right-0 h-[60vh]
-          lg:static lg:h-auto overflow-hidden z-20
+          absolute bottom-0 left-0 right-0 h-[70svh] rounded-t-2xl lg:rounded-none shadow-2xl lg:shadow-none
+          lg:static lg:h-full overflow-hidden z-20
         `}
       >
+        {/* Mobile grab handle — tap to minimize the sheet and reveal the map */}
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Minimize"
+          className="lg:hidden shrink-0 w-full flex items-center justify-center pt-2.5 pb-2 border-b border-gray-100 active:bg-gray-50"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-gray-300" />
+        </button>
+
         {/* Report form replaces the feed when open */}
         {showForm ? (
           <ReportForm
@@ -157,10 +170,29 @@ export default function HomePage() {
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Active reports
                 </h2>
-                <span className="text-xs text-gray-400">{reports.length} found</span>
+                <span className="text-xs text-gray-400">
+                  {loadingReports ? '…' : `${reports.length} found`}
+                </span>
               </div>
 
-              {reports.length === 0 ? (
+              {loadingReports ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="h-4 w-12 bg-gray-200 rounded-full" />
+                        <div className="h-3 w-10 bg-gray-100 rounded" />
+                      </div>
+                      <div className="h-3.5 w-2/3 bg-gray-200 rounded mb-2" />
+                      <div className="h-3 w-1/3 bg-gray-100 rounded mb-4" />
+                      <div className="flex gap-2">
+                        <div className="h-7 flex-1 bg-gray-100 rounded-lg" />
+                        <div className="h-7 flex-1 bg-gray-100 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : reports.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <p className="text-2xl mb-2">🔍</p>
                   <p className="text-sm">No active checkpoints reported</p>
@@ -201,6 +233,25 @@ export default function HomePage() {
           </div>
         )}
       </aside>
+
+      {/* Collapsed peek bar — mobile only. Shown when the sheet is minimized;
+          tap to bring the list (or the in-progress report) back up. */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="lg:hidden absolute bottom-0 left-0 right-0 z-30
+            bg-white border-t border-gray-200 shadow-2xl rounded-t-2xl
+            px-4 py-3 flex items-center justify-between active:bg-gray-50"
+        >
+          <span className="text-sm font-semibold text-gray-700">
+            {showForm
+              ? '✎ Continue your report'
+              : `View ${reports.length} active report${reports.length === 1 ? '' : 's'}`}
+          </span>
+          <span className="text-gray-400 text-lg leading-none">⌃</span>
+        </button>
+      )}
     </div>
   )
 }

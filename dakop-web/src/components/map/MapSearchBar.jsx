@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchPlaces } from '../../api/geocoding'
+import { searchPlaces, extractBarangay } from '../../api/geocoding'
 
 export default function MapSearchBar({ onPlaceSelect }) {
   const [query,   setQuery]   = useState('')
@@ -36,7 +36,7 @@ export default function MapSearchBar({ onPlaceSelect }) {
   function handleSelect(place) {
     const name   = place.display_name.split(',')[0].trim()
     const addr   = place.address ?? {}
-    const suburb = addr.suburb ?? addr.quarter ?? addr.village ?? addr.neighbourhood ?? ''
+    const suburb = extractBarangay(place) ?? ''
     const city   = addr.city ?? addr.town ?? addr.municipality ?? ''
 
     setQuery(name)
@@ -96,7 +96,7 @@ export default function MapSearchBar({ onPlaceSelect }) {
             {results.map((place, i) => {
               const name   = place.display_name.split(',')[0].trim()
               const addr   = place.address ?? {}
-              const suburb = addr.suburb ?? addr.quarter ?? addr.village ?? ''
+              const suburb = extractBarangay(place) ?? ''
               const city   = addr.city ?? addr.town ?? addr.municipality ?? ''
               const type   = addr.amenity ?? addr.shop ?? addr.building ?? ''
 

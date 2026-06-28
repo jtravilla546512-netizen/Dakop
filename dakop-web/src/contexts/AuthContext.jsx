@@ -43,8 +43,19 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  // Merge updated fields (e.g. after editing profile) into the current user
+  function updateUser(patch) {
+    setUser(u => ({ ...u, ...patch }))
+  }
+
+  // Clear local session without calling the API (e.g. after deleting the account)
+  function clearSession() {
+    localStorage.removeItem('auth_token')
+    setUser(null)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, clearSession }}>
       {children}
     </AuthContext.Provider>
   )

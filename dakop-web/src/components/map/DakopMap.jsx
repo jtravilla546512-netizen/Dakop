@@ -59,6 +59,30 @@ function FlyToController({ position }) {
   return null
 }
 
+// ── Internal: keeps Leaflet in sync with its container size ──────────────────
+// Fixes the blank/grey map on mobile, sidebar toggles, and orientation changes.
+// Leaflet measures its container once on init; if the size changes (or was 0 at
+// mount) it must be told to recalculate via invalidateSize().
+function ResizeHandler() {
+  const map = useMap()
+  useEffect(() => {
+    const container = map.getContainer()
+
+    // Recalculate whenever the container's size changes
+    const observer = new ResizeObserver(() => map.invalidateSize())
+    observer.observe(container)
+
+    // And once shortly after mount, in case it started at 0 height
+    const timer = setTimeout(() => map.invalidateSize(), 250)
+
+    return () => {
+      observer.disconnect()
+      clearTimeout(timer)
+    }
+  }, [map])
+  return null
+}
+
 // ── Public component ─────────────────────────────────────────────────────────
 export default function DakopMap({
   reports        = [],    // active reports to display
@@ -82,6 +106,7 @@ export default function DakopMap({
 
         <ClickHandler onMapClick={onMapClick} waitingForPin={waitingForPin} />
         <FlyToController position={flyToPosition} />
+        <ResizeHandler />
 
         {/* Active reports */}
         {reports.map(report => (
@@ -93,7 +118,7 @@ export default function DakopMap({
             <Popup>
               <div className="text-sm min-w-[170px]">
                 <p className="font-semibold text-gray-800 mb-0.5">
-                  {report.type === 'speed_gun' ? 'Speed Gun' : report.type.toUpperCase()} Checkpoint
+                  {report.type === 'speed_gun' ? 'Speed Gun' : (report.type?.toUpperCase() ?? 'Checkpoint')} Checkpoint
                 </p>
                 <p className="text-gray-500 text-xs">
                   {report.location?.barangay}, {report.location?.city}

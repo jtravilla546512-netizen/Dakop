@@ -24,9 +24,14 @@ export default function Header() {
           <nav className="flex items-center gap-2">
             {user ? (
               <>
-                <span className="hidden sm:block text-sm text-gray-500 mr-2">
-                  Hi, {user.name}
-                </span>
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 mr-1 max-w-[120px] sm:max-w-none truncate transition-colors"
+                  title="Account settings"
+                >
+                  <span aria-hidden>⚙️</span>
+                  <span className="truncate">Hi, {user.name}</span>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
